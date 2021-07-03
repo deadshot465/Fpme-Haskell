@@ -28,6 +28,7 @@ library
       Ch5
       Ch7a
       Ch7b
+      Ch9
   other-modules:
       Paths_fpBookHaskell
   hs-source-dirs:
