@@ -25,13 +25,16 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      Ch5
+      Ch7a
+      Ch7b
   other-modules:
       Paths_fpBookHaskell
   hs-source-dirs:
       src
   build-depends:
       base >=4.7 && <5
+    , text
   default-language: Haskell2010
 
 executable fpBookHaskell-exe
@@ -44,6 +47,7 @@ executable fpBookHaskell-exe
   build-depends:
       base >=4.7 && <5
     , fpBookHaskell
+    , text
   default-language: Haskell2010
 
 test-suite fpBookHaskell-test
@@ -57,4 +61,5 @@ test-suite fpBookHaskell-test
   build-depends:
       base >=4.7 && <5
     , fpBookHaskell
+    , text
   default-language: Haskell2010

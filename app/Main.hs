@@ -1,6 +1,8 @@
 module Main where
 
-import qualified Lib as L
+import qualified Ch5
+import qualified Ch7a
+import qualified Ch7b
 
 main :: IO ()
-main = L.test
+main = Ch7b.test

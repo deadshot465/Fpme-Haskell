@@ -1,4 +1,4 @@
-module Lib
+module Ch5
     ( test
     ) where
 
