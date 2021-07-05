@@ -13,6 +13,8 @@ test = do
   verifyAndBoolMonoid
   verifyOrBoolSemigroup
   verifyOrBoolMonoid
+  verifyMod4Semigroup
+  verifyMod4Monoid
 
 class Semigroup a where
   (<>) :: a -> a -> a
@@ -61,3 +63,48 @@ verifyOrBoolMonoid = do
   putStrLn "Verifying OrBool Monoid Laws (2 tests)"
   print $ (OTrue <> mempty) == (mempty <> OTrue) && mempty <> OTrue == OTrue
   print $ (OFalse <> mempty) == (mempty <> OFalse) && mempty <> OFalse == OFalse
+
+data Mod4 = Zero | One | Two | Three deriving (Eq, Show)
+
+instance Semigroup Mod4 where
+  (<>) Zero x = x
+  (<>) x Zero = x
+  (<>) One One = Two
+  (<>) One Two = Three
+  (<>) One Three = Zero
+  (<>) Two One = Three
+  (<>) Two Two = Zero
+  (<>) Two Three = One
+  (<>) Three One = Zero
+  (<>) Three Two = One
+  (<>) Three Three = Two
+
+instance Monoid Mod4 where
+  mempty = Zero
+
+verifyMod4Semigroup :: IO ()
+verifyMod4Semigroup = do
+  putStrLn "Verifying Mod4 Semigroup Laws (1 test)"
+  print $ (One <> Two) <> Three == One <> (Two <> Three)
+
+verifyMod4Monoid :: IO ()
+verifyMod4Monoid = do
+  putStrLn "Verifying Mod4 Monoid Laws (1 test)"
+  print $ One <> mempty == mempty <> One && One <> mempty == One
+
+newtype First a = First (Maybe a) deriving (Eq, Show)
+newtype Last a = Last (Maybe a) deriving (Eq, Show)
+
+instance Semigroup (First a) where
+  (<>) (First Nothing) last = last
+  (<>) first _ = first
+
+instance Monoid (First a) where
+  mempty = First Nothing
+
+instance Semigroup (Last a) where
+  (<>) first (Last Nothing) = first
+  (<>) _ last = last
+
+instance Monoid (Last a) where
+  mempty = Last Nothing
