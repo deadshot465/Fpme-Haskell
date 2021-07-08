@@ -23,6 +23,12 @@ test = do
   print $ second (* 2) (Right 10 :: Either () Double)
   print $ first toUpper (Left (pack "error reason") :: Either Text ())
   print $ first toUpper $ Right 10
+  print $ second (* 2) $ Tuple 80 40
+  print $ first (/ 2) $ Tuple 80 40
+  print $ bimap (/ 2) (* 2) $ Tuple 80 40
+  print $ second (* 2) $ Triple 99 80 40
+  print $ first (/ 2) $ Triple 99 80 40
+  print $ bimap (/ 2) (* 2) $ Triple 99 80 40
 
 data Maybe a = Nothing | Just a deriving (Eq, Show)
 
@@ -49,3 +55,9 @@ instance Functor (Triple a b) where
 instance Bifunctor Either where
   bimap f _ (Left x) = Left $ f x
   bimap _ g (Right x) = Right $ g x
+
+instance Bifunctor Tuple where
+  bimap f g (Tuple x y) = Tuple (f x) (g y)
+
+instance Bifunctor (Triple a) where
+  bimap f g (Triple x y z) = Triple x (f y) (g z)

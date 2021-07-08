@@ -22,6 +22,8 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - text
+- profunctors >= 5.6.2
+- invariant >= 0.5.4
 
 library:
   source-dirs: src
