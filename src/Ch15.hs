@@ -34,21 +34,23 @@ runPredicate (Predicate f) = f
   contramap :: forall f a b. Contravariant f => (a -> b) -> f b -> f a
   f :: a -> b
   b :: b -> Bool 
+  a :: a -> bool
 -}
 instance Contravariant Predicate where
   contramap f (Predicate g) = Predicate (g . f)
 
-data Moore s a b = Moore s (s -> b) (s -> a -> s)
+data Moore a b c = Moore a (a -> c) (a -> b -> a)
 
 addr :: Num a => Moore a a a
 addr = Moore 0 id (+)
 
 {-
-  dimap :: (c -> a) -> (b -> d) -> p a b -> p c d
-  f :: c -> a
-  g :: b -> d
-  output :: s -> b
-  transition s :: a -> s
+  dimap :: (a -> b) -> (c -> d) -> p b c -> p a d
+  f :: a -> b
+  g :: c -> d
+  output :: a -> c
+  transition a :: b -> a
+  Moore _ (_ -> c) (_ -> b -> _) ----> Moore _ (_ -> d) (_ -> a -> _)
 -}
 instance Profunctor (Moore a) where
   dimap f g (Moore s output transition) = Moore s (g . output) (\s -> transition s . f)
