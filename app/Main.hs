@@ -7,6 +7,7 @@ import qualified Ch9
 import qualified Ch11
 import qualified Ch13
 import qualified Ch15
+import qualified Ch17
 
 main :: IO ()
-main = Ch15.test
+main = Ch17.test
