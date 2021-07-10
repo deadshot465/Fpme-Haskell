@@ -1,8 +1,10 @@
+{-# LANGUAGE DeriveFunctor #-}
 module Ch17 where
 
 import Prelude hiding (Maybe(..), Either(..))
 
 import Data.Bifunctor (Bifunctor(..))
+import Data.Text (Text(..), pack)
 
 test :: IO ()
 test = do
@@ -39,3 +41,35 @@ instance Applicative (Either a) where
   pure = Right
   (<*>) (Left y) _ = Left y
   (<*>) (Right f) x = f <$> x
+
+newtype Validation err result = Validation (Either err result) deriving (Eq, Show, Ord, Functor)
+
+instance Bifunctor Validation where
+  bimap f _ (Validation (Left x)) = Validation $ Left $ f x
+  bimap _ g (Validation (Right x)) = Validation $ Right $ g x
+
+instance Semigroup err => Applicative (Validation err) where
+  pure = Validation . Right
+  (<*>) (Validation (Left err1)) (Validation (Left err2)) = Validation $ Left $ err1 <> err2
+  (<*>) (Validation (Left err)) _ = Validation $ Left err
+  (<*>) (Validation (Right f)) x = f <$> x
+
+newtype Age = Age Int deriving (Eq, Show, Ord)
+
+data FamilyAges = FamilyAges { fatherAge :: Age, motherAge :: Age, childAge :: Age } deriving (Eq, Show, Ord)
+data FamilyNames = FamilyNames { fatherName :: Text, motherName :: Text, childName :: Text } deriving (Eq, Show, Ord)
+
+newtype LowerAge = LowerAge Int deriving (Eq, Show, Ord)
+newtype UpperAge = UpperAge Int deriving (Eq, Show, Ord)
+
+validateAges :: LowerAge -> UpperAge -> Age -> [Char] -> Validation [Text] Age
+validateAges (LowerAge low) (UpperAge high) actualAge@(Age age) who | age < low = Validation $ Left [pack $ who <> " is too young."]
+                                                                    | age > high = Validation $ Left [pack $ who <> " is too old."]
+                                                                    | otherwise = Validation $ Right actualAge
+
+createAges :: FamilyAges -> Validation [Text] FamilyAges
+createAges FamilyAges { fatherAge = fa, motherAge = ma, childAge = ca } =
+  (\x y z -> FamilyAges { fatherAge = x, motherAge = y, childAge = z }) <$>
+  validateAges (LowerAge 1) (UpperAge 18) fa "Father" <*>
+  validateAges (LowerAge 1) (UpperAge 18) ma "Mother" <*>
+  validateAges (LowerAge 1) (UpperAge 18) ca "Child"

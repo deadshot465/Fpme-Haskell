@@ -33,6 +33,7 @@ library
       Ch7a
       Ch7b
       Ch9
+      Parser
   other-modules:
       Paths_fpBookHaskell
   hs-source-dirs:
