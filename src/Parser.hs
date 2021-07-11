@@ -1,13 +1,19 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
 module Parser where
 
 import Prelude
 
-import Data.Text (Text(..), uncons)
+import Control.Applicative (empty)
+import Data.Text (Text(..), uncons, pack)
 
 test :: IO ()
 test = do
-  print "Hello"
+  print $ parse' char (pack "ABC")
+  print $ parse' twoChars (pack "ABC")
+  print $ parse' threeChars (pack "ABC")
+  print $ parse' threeChars (pack "A")
+  print $ parse' (count 3 char) (pack "ABCD")
 
 type ParserState a = (Text, a)
 
@@ -15,6 +21,9 @@ data PError = EOF deriving (Eq, Show)
 
 class ParserError e where
   eof :: e
+
+instance ParserError PError where
+  eof = EOF
 
 type ParserFunction e a = ParserError e => Text -> Either e (ParserState a)
 newtype Parser e a = Parser (ParserFunction e a)
@@ -33,7 +42,21 @@ instance Applicative (Parser e) where
 parse :: Parser e a -> ParserFunction e a
 parse (Parser f) = f
 
+parse' :: Parser PError a -> ParserFunction PError a
+parse' = parse
+
 char :: Parser e Char
 char = Parser (\s -> case uncons s of
   Nothing -> Left eof
   Just (c, s) -> Right (s, c))
+
+twoChars :: Parser e (Char, Char)
+twoChars = (,) <$> char <*> char
+
+threeChars :: Parser e [Char]
+threeChars = (\c1 c2 c3 -> [c1, c2, c3]) <$> char <*> char <*> char
+
+
+count :: Applicative f => Int -> f a -> f [a]
+count n p | n <= 0 = pure empty
+          | otherwise = sequenceA (replicate n p)
