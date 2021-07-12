@@ -5,6 +5,8 @@ module Parser where
 import Prelude
 
 import Control.Applicative (empty)
+import Control.Monad (ap, (>=>))
+import Data.Function ((&))
 import Data.Text (Text(..), uncons, pack)
 
 test :: IO ()
@@ -33,11 +35,12 @@ instance Functor (Parser e) where
 
 instance Applicative (Parser e) where
   pure x = Parser (\s -> pure (s, x))
-  (<*>) p1 p2 = Parser (\s -> case parse p1 s of
+  {- (<*>) p1 p2 = Parser (\s -> case parse p1 s of
     Left err -> Left err
     Right (s1, h) -> case parse p2 s1 of
       Left err -> Left err
-      Right (s2, x) -> Right (s2, h x))
+      Right (s2, x) -> Right (s2, h x)) -}
+  (<*>) = ap
 
 parse :: Parser e a -> ParserFunction e a
 parse (Parser f) = f
@@ -60,3 +63,9 @@ threeChars = (\c1 c2 c3 -> [c1, c2, c3]) <$> char <*> char <*> char
 count :: Applicative f => Int -> f a -> f [a]
 count n p | n <= 0 = pure empty
           | otherwise = sequenceA (replicate n p)
+
+instance Monad (Parser e) where
+  -- (>>=) mf mx = Parser (parse mf >=> \(s1, x) -> parse (mx x) s1)
+  (>>=) mf mx = Parser (\s -> do
+    (s1, x) <- parse mf s
+    parse (mx x) s1)
