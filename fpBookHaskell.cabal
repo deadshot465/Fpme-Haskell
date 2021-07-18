@@ -36,6 +36,7 @@ library
       Ch7b
       Ch9
       Parser
+      Test
   other-modules:
       Paths_fpBookHaskell
   hs-source-dirs:
