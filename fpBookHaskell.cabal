@@ -36,6 +36,7 @@ library
       Ch7a
       Ch7b
       Ch9
+      MonadStack
       Parser
       Test
   other-modules:
