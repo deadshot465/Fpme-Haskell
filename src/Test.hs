@@ -33,9 +33,7 @@ getMyFunc (MyFunc f) = f
 
 string = MyFunc (\i -> Right (pack $ show i, pack $ show i, i))
 
-
 twoStrings = (,) <$> string <*> string
-
 
 threeStrings = (\x y z -> x + y + z) <$> string <*> string <*> string
 

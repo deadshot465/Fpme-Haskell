@@ -1,13 +1,19 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Ch18 where
 
 import Prelude
 
 import Data.Bifunctor (first)
 import Data.Function ((&))
+import Data.Functor ((<&>))
 import Control.Monad ((>=>))
+import Control.Monad.Trans.Class (MonadTrans, lift)
 
 newtype Config = Config { debugModeOn :: Bool } deriving (Show)
 type Counter = Int
@@ -18,15 +24,15 @@ test = do
 
 rwsTest :: RWS Config [[Char]] Counter ()
 rwsTest = do
-  tell ["test the log"]
-  tell ["test the log2", "test the log3"]
-  config <- ask
-  tell ["the config is " <> show config]
-  counter <- get
-  tell ["old counter is " <> show counter]
-  put $ counter + 1
-  newCounter <- get
-  tell ["new counter is " <> show newCounter]
+  tellRWS ["test the log"]
+  tellRWS ["test the log2", "test the log3"]
+  config <- askRWS
+  tellRWS ["the config is " <> show config]
+  counter <- getRWS
+  tellRWS ["old counter is " <> show counter]
+  putRWS $ counter + 1
+  newCounter <- getRWS
+  tellRWS ["new counter is " <> show newCounter]
   pure ()
 
 newtype MyReader r a = MyReader (r -> a)
@@ -43,6 +49,18 @@ instance Monad (MyReader r) where
 
 runMyReader :: MyReader r a -> r -> a
 runMyReader (MyReader f) = f
+
+newtype MyWriter w a = MyWriter (a, w)
+
+instance Functor (MyWriter w) where
+  fmap f (MyWriter (a, w)) = MyWriter (f a, w)
+
+instance Monoid w => Applicative (MyWriter w) where
+  (<*>) (MyWriter (f, w)) (MyWriter (a, w')) = MyWriter (f a, w <> w')
+  pure x = MyWriter (x, mempty)
+
+instance Monoid w => Monad (MyWriter w) where
+  (>>=) (MyWriter (a, w)) f = f a & \(MyWriter (b, w')) -> MyWriter (b, w <> w')
 
 newtype State s a = State (s -> (a, s))
 
@@ -83,14 +101,82 @@ instance Monoid w => Monad (RWS r w s) where
 runRWS :: RWS r w s a -> RWSResult r w s -> (a, RWSResult r w s)
 runRWS (RWS rws) = rws
 
-tell :: w -> RWS r w s ()
-tell w = RWS (\RWSResult { r, s } -> ((), RWSResult { r, w, s }))
+tellRWS :: w -> RWS r w s ()
+tellRWS w = RWS (\RWSResult { r, s } -> ((), RWSResult { r, w, s }))
 
-ask :: Monoid w => RWS r w s r
-ask = RWS (\RWSResult { r, s } -> (r, RWSResult { r, w = mempty, s }))
+askRWS :: Monoid w => RWS r w s r
+askRWS = RWS (\RWSResult { r, s } -> (r, RWSResult { r, w = mempty, s }))
 
-get :: Monoid w => RWS r w s s
-get = RWS (\RWSResult { r, s } -> (s, RWSResult { r, w = mempty, s }))
+getRWS :: Monoid w => RWS r w s s
+getRWS = RWS (\RWSResult { r, s } -> (s, RWSResult { r, w = mempty, s }))
 
-put :: Monoid w => s -> RWS r w s ()
-put s = RWS (\RWSResult { r } -> ((), RWSResult { r, w = mempty, s }))
+putRWS :: Monoid w => s -> RWS r w s ()
+putRWS s = RWS (\RWSResult { r } -> ((), RWSResult { r, w = mempty, s }))
+
+newtype WriterT w m a = WriterT (m (a, w))
+
+runWriterT :: WriterT w m a -> m (a, w)
+runWriterT (WriterT mx) = mx
+
+instance Functor m => Functor (WriterT w m) where
+  fmap f (WriterT mx) = WriterT $ first f <$> mx
+
+instance (Monoid w, Monad m) => Applicative (WriterT w m) where
+  (<*>) (WriterT mf) (WriterT mx) = WriterT (do
+    (x, w) <- mx
+    (f, w') <- mf
+    pure (f x, w <> w'))
+  pure x = WriterT $ pure (x, mempty)
+
+instance (Monoid w, Monad m) => Monad (WriterT w m) where
+  (>>=) (WriterT mx) f = WriterT (do
+    (x, w) <- mx
+    (y, w') <- runWriterT $ f x
+    pure (y, w <> w'))
+
+newtype ReaderT r m a = ReaderT (r -> m a)
+
+runReaderT :: ReaderT r m a -> r -> m a
+runReaderT (ReaderT mf) = mf
+
+instance Functor m => Functor (ReaderT r m) where
+  fmap f (ReaderT mg) = ReaderT (fmap f . mg)
+
+instance Monad m => Applicative (ReaderT r m) where
+  {- (<*>) (ReaderT mf) (ReaderT mg) = ReaderT (\r -> do
+    a <- mg r
+    f <- mf r
+    pure $ f a) -}
+  (<*>) (ReaderT mf) (ReaderT mg) = ReaderT (\r -> mf r <*> mg r)
+  --pure = ReaderT . const . pure
+  pure = lift . pure
+
+instance Monad m => Monad (ReaderT r m) where
+  (>>=) (ReaderT mf) mg = ReaderT (\r -> mf r >>= \a -> runReaderT (mg a) r)
+
+instance MonadTrans (ReaderT r) where
+  lift = ReaderT . const
+
+class Monad m => MonadAsk r m | m -> r where
+  ask :: m r
+
+class Monad m => MonadTell w m | m -> w where
+  tell :: w -> m ()
+
+class Monad m => MonadState s m | m -> s where
+  state :: (s -> (a, s)) -> m a
+
+class Monad m => MonadThrow e m | m -> e where
+  throwError :: e -> m a
+
+class MonadThrow e m => MonadError e m | m -> e where
+  catchError :: m a -> (e -> m a) -> m a
+
+instance Monad m => MonadAsk r (ReaderT r m) where
+  ask = ReaderT pure
+
+instance MonadTell w m => MonadTell w (ReaderT r m) where
+  tell = lift . tell
+
+instance MonadState s m => MonadState s (ReaderT r m) where
+  state = lift . state
