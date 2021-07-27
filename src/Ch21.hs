@@ -81,12 +81,12 @@ data AppEffects = AppEffects
   { log :: [Char]
   , state :: Int
   , result :: Maybe ()
-  }
+  } deriving (Show)
 
 type AppResult = (Maybe String, AppEffects)
 
-runApp :: Int -> AppM -> IO StackResult
-runApp st = flip S.runStateT st . W.runWriterT . E.runExceptT
+runApp :: Int -> AppM -> IO AppResult
+runApp st = (results <$>) . flip S.runStateT st . W.runWriterT . E.runExceptT
 
 {- runApp' :: s -> ExceptT e (WriterT w (S.StateT s m)) a -> m ((Either e a, w), s)
 runApp' st = runExceptT >>> runWriterT >>> flip S.runStateT st -}
@@ -100,9 +100,12 @@ results ((Right result, l), s) = (Nothing, AppEffects { Ch21.log = l, Ch21.state
 
 app :: AppM
 app = do
-  lift $ W.tell "Starting the app..."
+  lift $ log' "Starting the app..."
   n <- lift $ lift S.get
   when (n == 0) $ void $ E.throwE "We cannot have a 0 state."
   lift $ lift $ S.put $ n + 1
-  lift $ W.tell "Incremented State."
+  lift $ log' "Incremented State."
   pure ()
+
+log' :: Monad m => [Char] -> W.WriterT [Char] m ()
+log' s = W.tell $ s <> "\n"

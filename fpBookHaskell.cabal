@@ -37,6 +37,7 @@ library
       Ch7b
       Ch9
       MonadStack
+      Owoifier
       Parser
       Test
   other-modules:
