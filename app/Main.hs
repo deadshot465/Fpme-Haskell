@@ -12,7 +12,8 @@ import qualified Ch18
 import qualified Ch19
 import qualified Ch21
 import qualified Ch23a
+import qualified Ch23b
 import qualified Parser
 
 main :: IO ()
-main = Ch23a.test
+main = Ch23b.test
